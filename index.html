@@ -751,23 +751,20 @@ function showTab(id){
   if(id==='run') observeTimeline();
 }
 
-// ---- COUNTDOWN in Philippine Standard Time (UTC+8) ----
+// ---- COUNTDOWN (Philippine Standard Time UTC+8) ----
 function updateCountdown(){
   const now = new Date();
-  // Target: May 10, 2025, 4:30 AM PST (UTC+8)
-  // Create the target in UTC: May 10 04:30 PST = May 9 20:30 UTC
-  const targetUTC = Date.UTC(2026, 4, 9, 20, 30, 0); // months are 0-indexed, May=4
+  const targetUTC = Date.UTC(2026, 4, 9, 20, 30, 0); // May 10 2026 4:30AM PST = May 9 20:30 UTC
   const diff = targetUTC - now.getTime();
-  
   if(diff <= 0){
     document.getElementById('cd-d').textContent='00';
     document.getElementById('cd-h').textContent='00';
     document.getElementById('cd-m').textContent='00';
-    document.getElementById('cd-s').textContent='GO';
+    document.getElementById('cd-s').textContent='GO!';
     return;
   }
   const days = Math.floor(diff/86400000);
-  const hrs = Math.floor((diff%86400000)/3600000);
+  const hrs  = Math.floor((diff%86400000)/3600000);
   const mins = Math.floor((diff%3600000)/60000);
   const secs = Math.floor((diff%60000)/1000);
   document.getElementById('cd-d').textContent=String(days).padStart(2,'0');
@@ -778,14 +775,12 @@ function updateCountdown(){
 updateCountdown();
 setInterval(updateCountdown,1000);
 
-// ---- TIMELINE OBSERVER ----
+// ---- TIMELINE ----
 function observeTimeline(){
   const items=document.querySelectorAll('.tl-item');
   const obs=new IntersectionObserver((entries)=>{
     entries.forEach((e,i)=>{
-      if(e.isIntersecting){
-        setTimeout(()=>e.target.classList.add('visible'),i*120);
-      }
+      if(e.isIntersecting) setTimeout(()=>e.target.classList.add('visible'),i*120);
     });
   },{threshold:0.2});
   items.forEach(i=>obs.observe(i));
@@ -793,11 +788,11 @@ function observeTimeline(){
 observeTimeline();
 
 // ---- SUPABASE ----
-var SUPA_URL = 'https://bhgyerkagpavoqtcgcwh.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZ3llcmthZ3Bhdm9xdGNnY3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTgxNzQsImV4cCI6MjA5Mzc5NDE3NH0.qBdQnC3-CDDgDPX4PyjktPuMaKCTZXQ9O-8UAU8_Fys';
+const SUPA_URL = 'https://bhgyerkagpavoqtcgcwh.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZ3llcmthZ3Bhdm9xdGNnY3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTgxNzQsImV4cCI6MjA5Mzc5NDE3NH0.qBdQnC3-CDDgDPX4PyjktPuMaKCTZXQ9O-8UAU8_Fys';
 
 async function saveResponse(entry){
-  var res = await fetch(SUPA_URL+'/rest/v1/rsvps', {
+  const res = await fetch(SUPA_URL+'/rest/v1/rsvps',{
     method:'POST',
     headers:{
       'Content-Type':'application/json',
@@ -805,25 +800,25 @@ async function saveResponse(entry){
       'Authorization': 'Bearer '+SUPA_KEY,
       'Prefer': 'return=minimal'
     },
-    body: JSON.stringify({ name: entry.name, events: entry.events })
+    body: JSON.stringify({name:entry.name, events:entry.events})
   });
-  console.log('Save status:', res.status);
+  console.log('Save status:',res.status);
 }
 
 async function loadResponses(){
-  var res = await fetch(SUPA_URL+'/rest/v1/rsvps?select=*&order=created_at.desc', {
+  const res = await fetch(SUPA_URL+'/rest/v1/rsvps?select=*&order=created_at.desc',{
     headers:{
       'apikey': SUPA_KEY,
       'Authorization': 'Bearer '+SUPA_KEY
     }
   });
-  if(!res.ok){ console.log('Load error:', res.status); return []; }
+  if(!res.ok){ console.log('Load error:',res.status); return []; }
   return await res.json();
 }
 
 async function clearResponses(){
   if(!confirm('Clear ALL responses? This cannot be undone!')) return;
-  await fetch(SUPA_URL+'/rest/v1/rsvps?id=gte.0', {
+  await fetch(SUPA_URL+'/rest/v1/rsvps?id=gte.0',{
     method:'DELETE',
     headers:{
       'apikey': SUPA_KEY,
@@ -833,83 +828,40 @@ async function clearResponses(){
   renderResponses();
 }
 
-// ---- SECRET RESPONSES (Kirby only) ----
-// Tap the title "22km for 22" 5 times to open
-var secretTaps = 0, secretTimer = null;
-document.addEventListener('DOMContentLoaded', function(){
-  var title = document.querySelector('.hero-title');
-  if(title){
-    title.style.cursor = 'pointer';
-    title.addEventListener('click', function(){
-      secretTaps++;
-      clearTimeout(secretTimer);
-      if(secretTaps >= 5){ secretTaps=0; openResponses(); return; }
-      secretTimer = setTimeout(function(){ secretTaps=0; }, 2000);
-    });
-  }
-});
-
-function openResponses(){
-  document.getElementById('responses-overlay').style.display='block';
-  document.body.style.overflow='hidden';
-  setTimeout(function(){ document.getElementById('pw-input').focus(); }, 100);
-}
-function closeResponses(){
-  document.getElementById('responses-overlay').style.display='none';
-  document.getElementById('responses-lock').style.display='block';
-  document.getElementById('responses-content').style.display='none';
-  document.getElementById('pw-input').value='';
-  document.getElementById('pw-error').style.display='none';
-  document.body.style.overflow='';
-}
-function checkPw(){
-  var pw = document.getElementById('pw-input').value;
-  if(pw === 'kirby22'){
-    document.getElementById('responses-lock').style.display='none';
-    document.getElementById('responses-content').style.display='block';
-    renderResponses();
-  } else {
-    document.getElementById('pw-error').style.display='block';
-    document.getElementById('pw-input').value='';
-    document.getElementById('pw-input').focus();
-  }
-} }
-}
-async async function renderResponses(){
-  var el=document.getElementById('responses-list');
+async function renderResponses(){
+  const el=document.getElementById('responses-list');
   if(!el) return;
   el.innerHTML='<p style="color:rgba(255,255,255,.35);font-size:14px;text-align:center;margin-top:24px;">Loading... ⏳</p>';
-  var list = await loadResponses();
+  const list = await loadResponses();
   if(!list.length){
     el.innerHTML='<p style="color:rgba(255,255,255,.35);font-size:14px;text-align:center;margin-top:24px;">No responses yet — share the invite!</p>';
     return;
   }
-  var counts={run:0,breakfast:0,dinner:0,bonding:0};
-  list.forEach(function(r){
-    var evts = typeof r.events === 'string' ? r.events : (r.events||[]).join(', ');
-    if(evts.indexOf('Run')>-1) counts.run++;
-    if(evts.indexOf('Breakfast')>-1) counts.breakfast++;
-    if(evts.indexOf('Dinner')>-1) counts.dinner++;
-    if(evts.indexOf('Chicka')>-1||evts.indexOf('Bonding')>-1) counts.bonding++;
+  const counts={run:0,breakfast:0,dinner:0,bonding:0};
+  list.forEach(r=>{
+    const evts = typeof r.events==='string' ? r.events : (r.events||[]).join(', ');
+    if(evts.includes('Run')) counts.run++;
+    if(evts.includes('Breakfast')) counts.breakfast++;
+    if(evts.includes('Dinner')) counts.dinner++;
+    if(evts.includes('Chicka')||evts.includes('Bonding')) counts.bonding++;
   });
-  var summary='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">'
-    +'<div style="background:rgba(255,107,157,.1);border:1px solid rgba(255,107,157,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#ff6b9d;">'+counts.run+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🏃 Running</div></div>'
-    +'<div style="background:rgba(255,217,61,.1);border:1px solid rgba(255,217,61,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#ffd93d;">'+counts.breakfast+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🍳 Breakfast</div></div>'
-    +'<div style="background:rgba(107,203,119,.1);border:1px solid rgba(107,203,119,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#6bcb77;">'+counts.dinner+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🥂 Dinner</div></div>'
-    +'<div style="background:rgba(199,125,255,.1);border:1px solid rgba(199,125,255,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#c77dff;">'+counts.bonding+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);">💬 Bonding</div></div>'
-    +'</div><div style="font-size:11px;color:rgba(255,255,255,.3);text-align:right;margin-bottom:12px;">'+list.length+' total response'+(list.length!==1?'s':'')+'</div>';
-  var cards=list.map(function(r){
-    var evts = typeof r.events === 'string' ? r.events : (r.events||[]).join(', ');
-    var tags=evts.split(',').map(function(e){
-      return '<span style="background:rgba(255,107,157,.15);border:1px solid rgba(255,107,157,.25);border-radius:20px;padding:4px 10px;font-size:11px;color:#ff6b9d;margin:2px;">'+e.trim()+'</span>';
-    }).join('');
-    var t=new Date(r.created_at).toLocaleString('en-PH',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 18px;margin-bottom:12px;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-      +'<span style="font-weight:700;font-size:16px;">'+r.name+'</span>'
-      +'<span style="font-size:10px;color:rgba(255,255,255,.3);">'+t+'</span>'
-      +'</div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:4px;">'+tags+'</div></div>';
+  const summary=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
+    <div style="background:rgba(255,107,157,.1);border:1px solid rgba(255,107,157,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#ff6b9d;">${counts.run}</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🏃 Running</div></div>
+    <div style="background:rgba(255,217,61,.1);border:1px solid rgba(255,217,61,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#ffd93d;">${counts.breakfast}</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🍳 Breakfast</div></div>
+    <div style="background:rgba(107,203,119,.1);border:1px solid rgba(107,203,119,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#6bcb77;">${counts.dinner}</div><div style="font-size:11px;color:rgba(255,255,255,.4);">🥂 Dinner</div></div>
+    <div style="background:rgba(199,125,255,.1);border:1px solid rgba(199,125,255,.2);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:#c77dff;">${counts.bonding}</div><div style="font-size:11px;color:rgba(255,255,255,.4);">💬 Bonding</div></div>
+  </div><div style="font-size:11px;color:rgba(255,255,255,.3);text-align:right;margin-bottom:12px;">${list.length} total response${list.length!==1?'s':''}</div>`;
+  const cards=list.map(r=>{
+    const evts = typeof r.events==='string' ? r.events : (r.events||[]).join(', ');
+    const tags=evts.split(',').map(e=>`<span style="background:rgba(255,107,157,.15);border:1px solid rgba(255,107,157,.25);border-radius:20px;padding:4px 10px;font-size:11px;color:#ff6b9d;margin:2px;">${e.trim()}</span>`).join('');
+    const t=new Date(r.created_at).toLocaleString('en-PH',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 18px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-weight:700;font-size:16px;">${r.name}</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">${t}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${tags}</div>
+    </div>`;
   }).join('');
   el.innerHTML=summary+cards;
 }
@@ -917,37 +869,39 @@ async async function renderResponses(){
 // ---- RSVP ----
 function toggleRsvp(btn){
   btn.classList.toggle('selected');
-  var any=document.querySelectorAll('.rsvp-btn.selected').length>0;
+  const any=document.querySelectorAll('.rsvp-btn.selected').length>0;
   document.getElementById('send-btn').classList.toggle('show',any);
 }
-async async function sendRsvp(){
-  var nameEl=document.getElementById('rsvp-name');
-  var name=nameEl.value.trim();
+
+async function sendRsvp(){
+  const nameEl=document.getElementById('rsvp-name');
+  const name=nameEl.value.trim();
   if(!name){ nameEl.style.borderColor='#ff6b9d'; nameEl.placeholder='Please enter your name!'; nameEl.focus(); return; }
-  var events=[...document.querySelectorAll('.rsvp-btn.selected')].map(function(b){ return b.querySelector('div>div').textContent.trim(); });
-  var btn=document.getElementById('send-btn');
+  const events=[...document.querySelectorAll('.rsvp-btn.selected')].map(b=>b.querySelector('div>div').textContent.trim());
+  const btn=document.getElementById('send-btn');
   btn.textContent='Sending... ⏳';
   btn.style.pointerEvents='none';
-  await saveResponse({name:name,events:events});
+  await saveResponse({name,events});
   btn.classList.remove('show');
   document.getElementById('thank-you').classList.add('show');
   document.getElementById('rsvp-options').style.opacity='.4';
   document.getElementById('rsvp-options').style.pointerEvents='none';
-  nameEl.style.pointerEvents='none'; nameEl.style.opacity='.4';
+  nameEl.style.pointerEvents='none';
+  nameEl.style.opacity='.4';
 }
 
 // ---- SECRET RESPONSES (Kirby only) ----
-// Tap the title "22km for 22" 5 times to open
-var secretTaps = 0, secretTimer = null;
-document.addEventListener('DOMContentLoaded', function(){
-  var title = document.querySelector('.hero-title');
+// Tap "22km for 22" title 5 times quickly to open
+let secretTaps=0, secretTimer=null;
+document.addEventListener('DOMContentLoaded',()=>{
+  const title=document.querySelector('.hero-title');
   if(title){
-    title.style.cursor = 'pointer';
-    title.addEventListener('click', function(){
+    title.style.cursor='pointer';
+    title.addEventListener('click',()=>{
       secretTaps++;
       clearTimeout(secretTimer);
-      if(secretTaps >= 5){ secretTaps=0; openResponses(); return; }
-      secretTimer = setTimeout(function(){ secretTaps=0; }, 2000);
+      if(secretTaps>=5){ secretTaps=0; openResponses(); return; }
+      secretTimer=setTimeout(()=>{ secretTaps=0; },2000);
     });
   }
 });
@@ -955,7 +909,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function openResponses(){
   document.getElementById('responses-overlay').style.display='block';
   document.body.style.overflow='hidden';
-  setTimeout(function(){ document.getElementById('pw-input').focus(); }, 100);
+  setTimeout(()=>document.getElementById('pw-input').focus(),100);
 }
 function closeResponses(){
   document.getElementById('responses-overlay').style.display='none';
@@ -966,8 +920,8 @@ function closeResponses(){
   document.body.style.overflow='';
 }
 function checkPw(){
-  var pw = document.getElementById('pw-input').value;
-  if(pw === 'kirby22'){
+  const pw=document.getElementById('pw-input').value;
+  if(pw==='kirby22'){
     document.getElementById('responses-lock').style.display='none';
     document.getElementById('responses-content').style.display='block';
     renderResponses();
