@@ -792,16 +792,48 @@ function observeTimeline(){
 }
 observeTimeline();
 
-// ---- RSVP STORAGE ----
-function loadResponses(){
-  try{ return JSON.parse(localStorage.getItem('kirby22_rsvps')||'[]'); }catch(e){ return []; }
+// ---- SUPABASE ----
+var SUPA_URL = 'https://bhgyerkagpavoqtcgcwh.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZ3llcmthZ3Bhdm9xdGNnY3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTgxNzQsImV4cCI6MjA5Mzc5NDE3NH0.qBdQnC3-CDDgDPX4PyjktPuMaKCTZXQ9O-8UAU8_Fys';
+
+async function saveResponse(entry){
+  var res = await fetch(SUPA_URL+'/rest/v1/rsvps', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer '+SUPA_KEY,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ name: entry.name, events: entry.events })
+  });
+  console.log('Save status:', res.status);
 }
-function saveResponse(entry){
-  var list=loadResponses(); list.push(entry);
-  localStorage.setItem('kirby22_rsvps',JSON.stringify(list));
+
+async function loadResponses(){
+  var res = await fetch(SUPA_URL+'/rest/v1/rsvps?select=*&order=created_at.desc', {
+    headers:{
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer '+SUPA_KEY
+    }
+  });
+  if(!res.ok){ console.log('Load error:', res.status); return []; }
+  return await res.json();
 }
-function clearResponses(){
-  if(confirm('Clear all responses?')){ localStorage.removeItem('kirby22_rsvps'); renderResponses();
+
+async function clearResponses(){
+  if(!confirm('Clear ALL responses? This cannot be undone!')) return;
+  await fetch(SUPA_URL+'/rest/v1/rsvps?id=gte.0', {
+    method:'DELETE',
+    headers:{
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer '+SUPA_KEY
+    }
+  });
+  renderResponses();
+}
+
+function dummy_never_called(){
 
 // ---- SECRET RESPONSES (Kirby only) ----
 // Tap the title "22km for 22" 5 times to open
@@ -845,7 +877,7 @@ function checkPw(){
   }
 } }
 }
-async function renderResponses(){
+async async function renderResponses(){
   var el=document.getElementById('responses-list');
   if(!el) return;
   el.innerHTML='<p style="color:rgba(255,255,255,.35);font-size:14px;text-align:center;margin-top:24px;">Loading... ⏳</p>';
@@ -890,7 +922,7 @@ function toggleRsvp(btn){
   var any=document.querySelectorAll('.rsvp-btn.selected').length>0;
   document.getElementById('send-btn').classList.toggle('show',any);
 }
-async function sendRsvp(){
+async async function sendRsvp(){
   var nameEl=document.getElementById('rsvp-name');
   var name=nameEl.value.trim();
   if(!name){ nameEl.style.borderColor='#ff6b9d'; nameEl.placeholder='Please enter your name!'; nameEl.focus(); return; }
